@@ -86,3 +86,33 @@ def test_a_full_gallery_refuses_new_setups(engine, monkeypatch):
     store.save_setup(engine, "two", None, FIGURE_EIGHT)
     with pytest.raises(store.GalleryFullError):
         store.save_setup(engine, "three", None, FIGURE_EIGHT)
+
+
+def _presets():
+    from threebody.presets import PRESETS
+
+    return {name: (p.description, p.config) for name, p in PRESETS.items()}
+
+
+def test_seeding_adds_the_presets_once_and_keeps_their_ratings(engine):
+    presets = _presets()
+    assert store.ensure_featured(engine, presets) == (len(presets), 0)
+    eight = next(i for i in store.gallery(engine, which="featured") if i.name == "Figure-eight")
+    store.rate(engine, eight.id, "v", 5)
+
+    assert store.ensure_featured(engine, presets) == (0, 0)  # a redeploy changes nothing
+    changed = {**presets, "Figure-eight": ("a new description", presets["Figure-eight"][1])}
+    assert store.ensure_featured(engine, changed) == (0, 1)  # updated in place
+
+    again = next(i for i in store.gallery(engine, which="featured") if i.name == "Figure-eight")
+    assert (again.id, again.description, again.rating) == (eight.id, "a new description", 5.0)
+
+
+def test_the_gallery_separates_featured_and_visitors_setups(engine):
+    store.ensure_featured(engine, _presets())
+    store.save_setup(engine, "Figure-eight", "a visitor may reuse the name", FIGURE_EIGHT)
+    featured = store.gallery(engine, which="featured")
+    visitors = store.gallery(engine, which="visitors")
+    assert all(i.featured for i in featured) and len(featured) == len(_presets())
+    assert [i.name for i in visitors] == ["Figure-eight"] and not visitors[0].featured
+    assert len(store.gallery(engine, which="all")) == len(featured) + 1

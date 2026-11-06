@@ -14,7 +14,8 @@ services:
   # Brings the schema to the code's version before the app starts; exits when done.
   migrate:
     image: ${IMAGE:-ghcr.io/krinya/three-body-demo:main}
-    command: ["alembic", "upgrade", "head"]
+    # The schema first, then the presets into the gallery as featured setups.
+    command: ["sh", "-c", "alembic upgrade head && python -m threebody.seed"]
     environment:
       DATABASE_URL: postgresql+psycopg://threebody:${SERVICE_PASSWORD_POSTGRES}@db:5432/threebody
     depends_on:

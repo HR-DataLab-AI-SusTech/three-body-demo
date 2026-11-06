@@ -2,25 +2,35 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from threebody import physics
 from threebody.config import SetupConfig
 from threebody.physics import accelerations, simulate
-from threebody.presets import FIGURE_EIGHT, FIGURE_EIGHT_PERIOD, LAGRANGE_TRIANGLE, PRESETS
+from threebody.presets import LAGRANGE_TRIANGLE, PRESETS
 
 
 def _arrays(cfg: SetupConfig):
     return np.array(cfg.masses), np.array(cfg.positions), np.array(cfg.velocities)
 
 
-def test_figure_eight_closes_after_one_period():
-    m, x, v = _arrays(FIGURE_EIGHT)
-    traj = simulate(m, x, v, duration=FIGURE_EIGHT_PERIOD, dt=1e-3, softening=0.0)
-    assert np.max(np.abs(traj.positions[-1] - x)) < 1e-2
+PERIODIC = {name: p for name, p in PRESETS.items() if p.period is not None}
 
 
-def test_energy_stays_put_with_verlet():
-    m, x, v = _arrays(FIGURE_EIGHT)
-    traj = simulate(m, x, v, duration=3 * FIGURE_EIGHT_PERIOD, dt=1e-3, softening=0.0)
-    assert traj.energy_drift < 1e-6
+@pytest.mark.parametrize("name", list(PERIODIC))
+def test_every_periodic_preset_closes_after_one_period(name):
+    preset = PERIODIC[name]
+    assert preset.period is not None
+    m, x, v = _arrays(preset.config)
+    traj = simulate(m, x, v, duration=preset.period, frames=50)
+    # The published values have six digits; that is enough to come back within a few thousandths.
+    assert np.max(np.abs(traj.positions[-1] - x)) < 5e-3, name
+
+
+@pytest.mark.parametrize("name", list(PRESETS))
+def test_every_preset_runs_and_keeps_its_energy(name):
+    traj = PRESETS[name].config.run()
+    assert traj.positions.shape[1:] == (3, 2)
+    assert np.all(np.isfinite(traj.positions))
+    assert traj.energy_drift < 1e-5
 
 
 def test_momentum_is_conserved():
@@ -32,17 +42,23 @@ def test_momentum_is_conserved():
 
 def test_lagrange_triangle_keeps_its_shape():
     m, x, v = _arrays(LAGRANGE_TRIANGLE)
-    traj = simulate(m, x, v, duration=5.0, dt=1e-3, softening=0.0)
+    traj = simulate(m, x, v, duration=5.0)
     last = traj.positions[-1]
     sides = [np.linalg.norm(last[i] - last[(i + 1) % 3]) for i in range(3)]
-    assert np.ptp(sides) < 1e-3
+    assert np.ptp(sides) < 1e-6
 
 
-@pytest.mark.parametrize("name", list(PRESETS))
-def test_every_preset_runs(name):
-    traj = PRESETS[name].run(frames=50)
-    assert traj.positions.shape[1:] == (3, 2)
+def test_a_head_on_collision_finishes_quickly():
+    traj = simulate(
+        np.ones(3), np.array([[-1.0, 0.0], [1.0, 0.0], [0.0, 5.0]]), np.zeros((3, 2)), duration=10
+    )
     assert np.all(np.isfinite(traj.positions))
+
+
+def test_a_runaway_computation_is_stopped(monkeypatch):
+    monkeypatch.setattr(physics, "MAX_EVALUATIONS", 100)
+    with pytest.raises(physics.TooCloseError):
+        PRESETS["Butterfly IV"].config.run()
 
 
 def test_a_public_form_cannot_ask_for_absurd_values():

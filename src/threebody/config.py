@@ -24,16 +24,15 @@ class SetupConfig(BaseModel):
     masses: tuple[Mass, Mass, Mass]
     positions: tuple[Vector, Vector, Vector]
     velocities: tuple[Velocity, Velocity, Velocity]
-    duration: Annotated[float, Field(ge=1.0, le=30.0)] = 10.0
+    duration: Annotated[float, Field(ge=1.0, le=100.0)] = 10.0
 
-    def run(self, frames: int = 300) -> Trajectory:
-        # A finer step for heavier systems, whose close passes are faster.
-        dt = 1e-3 if max(self.masses) <= 2 else 5e-4
+    def run(self, frames: int | None = None) -> Trajectory:
+        # About 15 frames per time unit, so a long orbit is not drawn in a few big jumps.
+        n = frames or int(min(1500, max(300, 15 * self.duration)))
         return simulate(
             np.array(self.masses),
             np.array(self.positions),
             np.array(self.velocities),
             duration=self.duration,
-            dt=dt,
-            frames=frames,
+            frames=n,
         )

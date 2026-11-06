@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Literal
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Engine,
@@ -45,6 +46,7 @@ class Setup(Base):
     name: Mapped[str] = mapped_column(String(NAME_MAX))
     description: Mapped[str | None] = mapped_column(String(DESCRIPTION_MAX))
     config: Mapped[dict] = mapped_column(JSONB)
+    featured: Mapped[bool] = mapped_column(Boolean, server_default="false", default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -75,6 +77,7 @@ class GalleryItem:
     created_at: datetime
     rating: float | None
     votes: int
+    featured: bool
 
 
 def engine_from_env() -> Engine:
@@ -96,11 +99,16 @@ def save_setup(engine: Engine, name: str, description: str | None, config: Setup
 
 
 def gallery(
-    engine: Engine, order: Literal["best", "newest"] = "best", limit: int = 100
+    engine: Engine,
+    order: Literal["best", "newest"] = "best",
+    limit: int = 100,
+    which: Literal["all", "featured", "visitors"] = "all",
 ) -> list[GalleryItem]:
     avg = func.avg(Rating.stars).label("rating")
     votes = func.count(Rating.id).label("votes")
     q = select(Setup, avg, votes).outerjoin(Rating).group_by(Setup.id)
+    if which != "all":
+        q = q.where(Setup.featured.is_(which == "featured"))
     if order == "best":
         q = q.order_by(avg.desc().nulls_last(), votes.desc(), Setup.created_at.desc())
     else:
@@ -115,6 +123,7 @@ def gallery(
                 created_at=setup.created_at,
                 rating=float(rating) if rating is not None else None,
                 votes=int(n),
+                featured=setup.featured,
             )
             for setup, rating, n in s.execute(q.limit(limit)).all()
         ]
@@ -138,3 +147,20 @@ def rate(engine: Engine, setup_id: int, visitor: str, stars: int) -> bool:
 def delete_setup(engine: Engine, setup_id: int) -> bool:
     with Session(engine) as s, s.begin():
         return s.execute(delete(Setup).where(Setup.id == setup_id)).rowcount == 1  # type: ignore[attr-defined]
+
+
+def ensure_featured(engine: Engine, presets: dict[str, tuple[str, SetupConfig]]) -> tuple[int, int]:
+    """Make the featured setups match `presets` (name: description, config); keep ratings."""
+    added = updated = 0
+    with Session(engine) as s, s.begin():
+        current = {row.name: row for row in s.scalars(select(Setup).where(Setup.featured))}
+        for name, (description, config) in presets.items():
+            data = config.model_dump(mode="json")
+            row = current.get(name)
+            if row is None:
+                s.add(Setup(name=name, description=description, config=data, featured=True))
+                added += 1
+            elif row.description != description or row.config != data:
+                row.description, row.config = description, data
+                updated += 1
+    return added, updated

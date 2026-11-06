@@ -1,7 +1,7 @@
 # Three bodies
 
-A gravity playground: pick or tweak three masses, watch them orbit, save the setup to a shared
-gallery, and rate what others saved. It is the HR DataLab's demonstration of its app hosting, a
+A gravity playground: pick one of 16 famous orbits or tweak your own three masses, watch them,
+save the setup to a shared gallery, and rate what others saved. It is the HR DataLab's demonstration of its app hosting, a
 Streamlit app with a PostgreSQL database, built and deployed by CI to Coolify on the lab's guest pool.
 
 Live at <https://threebody-pilot.apps.twinhub.nl>.
@@ -11,11 +11,14 @@ Live at <https://threebody-pilot.apps.twinhub.nl>.
 | Service | What it does |
 | --- | --- |
 | `app` | Streamlit: the simulator and the gallery (`src/threebody/app.py`) |
-| `migrate` | Alembic, once, before `app` starts: creates or updates the tables |
+| `migrate` | once, before `app` starts: Alembic brings the tables up to date, then the famous orbits are seeded into the gallery as featured setups (`python -m threebody.seed`) |
 | `db` | PostgreSQL 17; the gallery survives restarts and redeploys in its volume |
 
-The physics is Newtonian gravity in a plane, integrated with velocity Verlet (`src/threebody/physics.py`);
-the tests check that the figure-eight orbit closes after one period and that energy stays put.
+The physics is Newtonian gravity in a plane, integrated by DOP853, an adaptive eighth-order
+Runge-Kutta method (`src/threebody/physics.py`). The famous orbits (`src/threebody/presets.py`) are
+the figure-eight, Lagrange's triangle, Burrau's Pythagorean problem and thirteen orbits from
+Šuvakov & Dmitrašinović, *Phys. Rev. Lett.* 110, 114301 (2013); the tests check that every periodic
+one returns to its start after its published period, and that energy stays put.
 
 ## Develop
 

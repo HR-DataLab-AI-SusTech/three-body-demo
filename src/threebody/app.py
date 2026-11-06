@@ -13,7 +13,7 @@ import streamlit as st
 
 from threebody import store
 from threebody.config import SetupConfig
-from threebody.physics import Trajectory
+from threebody.physics import TooCloseError, Trajectory
 from threebody.presets import PRESETS
 
 COLOURS = ("#d4104b", "#1f6feb", "#f2a900")  # HR red first
@@ -124,7 +124,7 @@ def figure(traj: Trajectory) -> go.Figure:
 # ── state ───────────────────────────────────────────────────────────────────────────────────────
 ss = st.session_state
 ss.setdefault("visitor", secrets.token_urlsafe(24))  # one anonymous id per browser session
-ss.setdefault("config", PRESETS["Figure-eight"])
+ss.setdefault("config", PRESETS["Figure-eight"].config)
 ss.setdefault("form_version", 0)  # bumped when a setup is loaded, so the inputs take its values
 ss.setdefault("saves", [])
 if notice := ss.pop("notice", None):
@@ -139,44 +139,50 @@ def load(config: SetupConfig) -> None:
 # ── the setup ───────────────────────────────────────────────────────────────────────────────────
 st.title("🪐 Three bodies")
 st.caption(
-    "Three masses under Newtonian gravity. Pick a classic, change it, watch it, and save "
-    "it to the gallery for others to rate."
+    "Three masses under Newtonian gravity. Pick one of the famous orbits, change it, watch it, "
+    "and save it to the gallery for others to rate."
 )
 
 with st.sidebar:
     st.header("Setup")
-    preset = st.selectbox("Start from a classic", ["—", *PRESETS])
-    if preset != "—" and st.button("Load this classic", use_container_width=True):
-        load(PRESETS[preset])
-        st.rerun()
+    preset = st.selectbox("Start from a famous orbit", ["—", *PRESETS])
+    if preset != "—":
+        st.caption(PRESETS[preset].description)
+        if st.button("Load it", use_container_width=True):
+            load(PRESETS[preset].config)
+            st.rerun()
 
     cfg, v = ss.config, ss.form_version
     masses, positions, velocities = [], [], []
     for b in range(3):
         with st.expander(f"Body {b + 1}", expanded=b == 0):
-            masses.append(st.slider("Mass", 0.1, 10.0, float(cfg.masses[b]), 0.1, key=f"m{b}{v}"))
+            masses.append(
+                st.number_input("Mass", 0.01, 100.0, float(cfg.masses[b]), 0.1, key=f"m{b}{v}")
+            )
             c1, c2 = st.columns(2)
             positions.append(
                 (
                     c1.number_input(
-                        "x", -5.0, 5.0, float(cfg.positions[b][0]), 0.05, key=f"x{b}{v}"
+                        "x", -10.0, 10.0, float(cfg.positions[b][0]), 0.05, key=f"x{b}{v}"
                     ),
                     c2.number_input(
-                        "y", -5.0, 5.0, float(cfg.positions[b][1]), 0.05, key=f"y{b}{v}"
+                        "y", -10.0, 10.0, float(cfg.positions[b][1]), 0.05, key=f"y{b}{v}"
                     ),
                 )
             )
             velocities.append(
                 (
                     c1.number_input(
-                        "vx", -3.0, 3.0, float(cfg.velocities[b][0]), 0.01, key=f"vx{b}{v}"
+                        "vx", -10.0, 10.0, float(cfg.velocities[b][0]), 0.01, key=f"vx{b}{v}"
                     ),
                     c2.number_input(
-                        "vy", -3.0, 3.0, float(cfg.velocities[b][1]), 0.01, key=f"vy{b}{v}"
+                        "vy", -10.0, 10.0, float(cfg.velocities[b][1]), 0.01, key=f"vy{b}{v}"
                     ),
                 )
             )
-    duration = st.slider("How long to watch", 2.0, 30.0, float(cfg.duration), 0.5, key=f"d{v}")
+    duration = st.number_input(
+        "How long to watch (time units)", 1.0, 100.0, float(cfg.duration), 1.0, key=f"d{v}"
+    )
 
     admin_code = os.environ.get("ADMIN_CODE", "")
     with st.expander("Admin"):
@@ -193,12 +199,19 @@ current = SetupConfig(
 play, gallery_tab = st.tabs(["Simulate", "Gallery"])
 
 with play:
-    traj = run(current.model_dump_json())
-    st.plotly_chart(figure(traj), use_container_width=True)
-    st.caption(
-        f"{len(traj.times)} frames over {current.duration:g} time units · energy kept to "
-        f"{traj.energy_drift:.1e} of its start (velocity Verlet, G = 1)"
-    )
+    try:
+        traj = run(current.model_dump_json())
+    except TooCloseError:
+        st.warning(
+            "Two bodies come so close that following them would take too long. "
+            "Move them apart a little, or watch for a shorter time."
+        )
+    else:
+        st.plotly_chart(figure(traj), use_container_width=True)
+        st.caption(
+            f"{len(traj.times)} frames over {current.duration:g} time units · energy kept to "
+            f"{traj.energy_drift:.1e} of its start (adaptive 8th-order Runge-Kutta, G = 1)"
+        )
 
     with st.form("save", clear_on_submit=True):
         st.subheader("Save it to the gallery")
@@ -221,25 +234,34 @@ with play:
 
 # ── the gallery ─────────────────────────────────────────────────────────────────────────────────
 with gallery_tab:
-    order = st.radio(
+    c1, c2 = st.columns(2)
+    which = c1.radio(
+        "Show",
+        ["featured", "visitors", "all"],
+        horizontal=True,
+        format_func={"featured": "Famous orbits", "visitors": "From visitors", "all": "All"}.get,
+    )
+    order = c2.radio(
         "Sort",
         ["best", "newest"],
         horizontal=True,
         format_func=lambda o: "Best rated" if o == "best" else "Newest",
     )
-    items = store.gallery(engine(), order)  # type: ignore[arg-type]
+    items = store.gallery(engine(), order, which=which)  # type: ignore[arg-type]
     if not items:
         st.info("Nothing saved yet. Be the first: simulate something and save it.")
     for item in items:
         with st.container(border=True):
             left, right = st.columns([3, 2])
             score = f"★ {item.rating:.1f} ({item.votes})" if item.rating else "not rated yet"
-            left.markdown(f"**{item.name}** · {score}")
+            badge = " · ⭐ famous orbit" if item.featured else ""
+            left.markdown(f"**{item.name}** · {score}{badge}")
             if item.description:
                 left.caption(item.description)
             left.caption(
                 f"masses {', '.join(f'{m:g}' for m in item.config.masses)} · "
-                f"saved {item.created_at:%d %b %Y}"
+                f"{item.config.duration:g} time units"
+                + ("" if item.featured else f" · saved {item.created_at:%d %b %Y}")
             )
             if right.button("Load and play", key=f"load{item.id}"):
                 load(item.config)
@@ -252,7 +274,11 @@ with gallery_tab:
                 else:
                     ss.notice = "You already rated this one."
                 st.rerun()  # read the gallery again, so the new average shows
-            if is_admin and right.button("Delete", key=f"del{item.id}", type="secondary"):
+            if (
+                is_admin
+                and not item.featured
+                and right.button("Delete", key=f"del{item.id}", type="secondary")
+            ):
                 store.delete_setup(engine(), item.id)
                 st.rerun()
 
