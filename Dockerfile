@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # One image for the app and its migrations. Base images are pinned by digest; Dependabot moves them.
 
-FROM ghcr.io/astral-sh/uv:0.12.23@sha256:61d393e44e249f2e4b526b6c7ddcecce245946826e608e11c93ad4f5bba55b21 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 AS uv
 
 # ── build: resolve the locked dependencies into /app/.venv ─────────────────────────────────────
 FROM python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc AS build
