@@ -12,7 +12,7 @@ if [ -z "${COOLIFY_TOKEN:-}" ] || [ -z "${COOLIFY_URL:-}" ] || [ -z "${COOLIFY_S
 fi
 case "$IMAGE_REF" in *@sha256:*) ;; *) echo "::error::IMAGE_REF is not a digest: $IMAGE_REF"; exit 1;; esac
 
-compose=$(sed "s#\${IMAGE:-ghcr.io/hr-datalab-ai-sustech/three-body-demo:main}#${IMAGE_REF}#g" compose.yaml)
+compose=$(sed "s#\${IMAGE:-ghcr.io/krinya/three-body-demo:main}#${IMAGE_REF}#g" compose.yaml)
 grep -q "$IMAGE_REF" <<<"$compose" || { echo "::error::the image line was not replaced"; exit 1; }
 
 cfg=$(mktemp); chmod 600 "$cfg"; trap 'rm -f "$cfg" /tmp/coolify.$$' EXIT

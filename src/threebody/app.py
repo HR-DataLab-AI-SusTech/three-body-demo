@@ -260,6 +260,6 @@ st.divider()
 st.caption(
     "Running on the HR DataLab's app hosting: Streamlit and PostgreSQL in Docker, deployed "
     "by CI to Coolify. Source: "
-    "[github.com/HR-DataLab-AI-SusTech/three-body-demo]"
-    "(https://github.com/HR-DataLab-AI-SusTech/three-body-demo)"
+    "[github.com/krinya/three-body-demo]"
+    "(https://github.com/krinya/three-body-demo)"
 )
