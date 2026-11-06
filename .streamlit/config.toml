@@ -1,0 +1,16 @@
+# Streamlit's settings for the deployed app; nothing here is secret.
+[client]
+# No "Deploy" button or developer menu for visitors.
+toolbarMode = "minimal"
+
+[server]
+headless = true
+# The panel's proxy terminates TLS and forwards; Streamlit's own XSRF check stays on.
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#d4104b"   # HR red (Compass hr-visual-design.md)
