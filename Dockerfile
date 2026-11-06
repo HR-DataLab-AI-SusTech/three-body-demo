@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# One image for the app and its migrations. Base images are pinned by digest; Dependabot moves them.
+# One image for the app and its migrations. Base images are pinned by digest.
 
 FROM ghcr.io/astral-sh/uv:0.12.23@sha256:61d393e44e249f2e4b526b6c7ddcecce245946826e608e11c93ad4f5bba55b21 AS uv
 
@@ -18,7 +18,10 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 
 # ── run: the venv and the code, nothing that built them, as an unprivileged user ───────────────
 FROM python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
-RUN useradd --uid 10001 --user-group --no-create-home --shell /usr/sbin/nologin app
+# The base image's pip is not used at run time, and it vendors old msgpack and setuptools that
+# the vulnerability scan rightly flags, so it goes.
+RUN python -m pip uninstall --yes --quiet pip \
+ && useradd --uid 10001 --user-group --no-create-home --shell /usr/sbin/nologin app
 WORKDIR /app
 COPY --from=build /app /app
 COPY .streamlit ./.streamlit
