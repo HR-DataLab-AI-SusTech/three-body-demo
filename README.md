@@ -2,7 +2,7 @@
 
 A gravity playground: pick one of 16 famous orbits or tweak your own three masses, watch them,
 save the setup to a shared gallery, and rate what others saved. It is the HR DataLab's demonstration of its app hosting, a
-Streamlit app with a PostgreSQL database, built and deployed by CI to Coolify on the lab's guest pool.
+Streamlit app with a PostgreSQL database, built and deployed by Coolify from this repository on the lab's guest pool.
 
 Live at <https://threebody-pilot.apps.twinhub.nl>.
 
@@ -31,12 +31,10 @@ SERVICE_PASSWORD_POSTGRES=dev SERVICE_PASSWORD_ADMIN=dev \
 
 The dev compose builds the image locally and publishes the app on <http://localhost:8501>.
 
-## How it reaches the internet
+## Deploy it yourself
 
-A push to `main` runs `.github/workflows/ci.yml`: lint, types and tests against a real PostgreSQL,
-then the image is built, scanned and pushed to GHCR with a provenance attestation, and the deploy job
-hands Coolify the compose file with the image pinned to that digest and asks it to deploy. A pull
-request runs the checks and never deploys. Coolify's own deploy-on-push is off, so nothing that
-failed CI goes live.
-
-Secrets are not in this repository: Coolify generates the database password and the admin code.
+Fork the repository, point a Coolify team at it, and every push to `main` redeploys:
+**[docs/deploy-on-coolify.md](docs/deploy-on-coolify.md)**. Coolify builds the `Dockerfile` on your
+server and generates the database password and the admin code; nothing secret is in the repository.
+[`ci.yml`](.github/workflows/ci.yml) runs format, lint, types and tests against a real PostgreSQL on
+every push and pull request, and is the gate: merge only when it is green.

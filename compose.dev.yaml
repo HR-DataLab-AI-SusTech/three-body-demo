@@ -1,10 +1,7 @@
-# Local development: build the image here and supply the values Coolify would generate.
+# Local development: publish the app on localhost:8501. Coolify generates the two passwords in
+# production; here you supply them:
 #   SERVICE_PASSWORD_POSTGRES=dev SERVICE_PASSWORD_ADMIN=dev \
 #     docker compose -f compose.yaml -f compose.dev.yaml up --build
 services:
   app:
-    build: .
-    image: three-body-demo:dev
     ports: ["127.0.0.1:8501:8501"]
-  migrate:
-    image: three-body-demo:dev
