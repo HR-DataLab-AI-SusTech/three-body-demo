@@ -61,25 +61,24 @@ fills it in. Nothing secret is in the repository, and you never type a password.
 ## The address: choosing it, changing it, your own domain
 
 An app's address is `https://<app>-<tenant>.apps.twinhub.nl`. The `<tenant>` part is your team's
-server and is fixed; the `<app>` part is yours to choose. The lab's front door sends every name that
-ends in `-<tenant>.apps.twinhub.nl` to your server, so no lab step is needed to *route* a new name
-(checked 2026-11-07: `anything-pilot.apps.twinhub.nl` reached the pilot tenant, a name ending in
-another tenant was refused).
+server and is fixed; the `<app>` part is yours to choose, and you can change it yourself. The lab's
+front door sends every name that ends in `-<tenant>.apps.twinhub.nl` to your server, and the
+wildcard DNS record `*.apps.twinhub.nl` makes every such name resolve, so a new name needs nothing
+from the lab.
 
-**Change the name**: edit the domain on the resource (**Domains**, the line for `app`, keep the
-port), save, and redeploy. The old name stops answering. Your server's proxy fetches a new
-certificate the first time the new name is visited.
+**Change the name**: replace the domain on the resource (**Domains**, the line for `app`, keep the
+port), save, and redeploy. The old name stops answering; your server's proxy fetches a certificate
+for the new one on its own. Use **one name per service**: adding a second name beside the first did
+not get routed in a test (cause not found), so replace rather than add.
 
-**The name must also resolve.** Until the lab creates the wildcard record `*.apps.twinhub.nl`,
-every name needs its own DNS record, made by the lab: ask your sponsor to add the new name before you
-switch. After the wildcard exists, renaming is entirely yours. (As of 2026-11-07 there is no
-wildcard; `threebody-pilot` and the panel have records of their own.)
+`verified 2026-11-07: the demo's domain replaced by renametest-pilot.apps.twinhub.nl and redeployed
+→ HTTP 200 with a Let's Encrypt certificate about 30 s after the deploy finished; the old name then
+gave 503 until the domain was put back`.
 
 **Your own domain** (`myapp.example.org`): point a `CNAME` at the pool's hostname (an `A` record for a
 bare domain), ask your sponsor to add the name to your server's allowed names, then enter it as the
-resource's domain. Names under `twinhub.nl` cannot be claimed this way.
-
-Not tried yet: a rename end to end, certificate included. Treat that part as unverified.
+resource's domain. Names under `twinhub.nl` cannot be claimed this way, and a custom domain still
+needs the lab until its tooling exists.
 
 ## Day to day
 
@@ -126,7 +125,7 @@ pack, or let Coolify detect the language, and set the port in the resource.
 | Bad gateway | the domain has the port (`:8501`); `app` is running, not restarting |
 | Deploy stops at `migrate` | its log; a failing migration keeps `app` from starting, by design |
 | Build killed or very slow | your server ran out of memory during the build; ask your sponsor for more, or build the image in GitHub Actions and deploy it (below) |
-| No certificate, or a name that does not open | the name resolves to the pool (`dig +short <address>`); a new name needs a DNS record first (see the address section); wait a minute and reload |
+| No certificate, or a name that does not open | the name resolves to the pool (`dig +short <address>`); wait a minute after the deploy and reload; the name must end in your server's `-<tenant>.apps.twinhub.nl` |
 | A push did not deploy | the webhook's recent deliveries in GitHub; the resource's Auto Deploy switch |
 
 ## Later: build in CI, deploy a pinned image
