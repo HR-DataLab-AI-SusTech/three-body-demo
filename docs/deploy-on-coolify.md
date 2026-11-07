@@ -10,7 +10,8 @@ the app on a public HTTPS address that redeploys on every push to `main`. About 
 
 - A Coolify team with a server (a *tenant*). Your sponsor at the lab arranges it.
 - A GitHub account.
-- The address you were given, for example `https://threebody-myteam.apps.twinhub.nl`.
+- Your server's name (the *tenant*), from your sponsor. Your app's address ends in it:
+  `https://<anything>-<tenant>.apps.twinhub.nl`, for example `https://threebody-myteam.apps.twinhub.nl`.
 
 ## What gets deployed
 
@@ -35,24 +36,23 @@ fills it in. Nothing secret is in the repository, and you never type a password.
 3. Choose the repository type:
    - **Public repository**: paste the fork's URL. Simplest, but pushes only deploy automatically
      after you add a webhook (step 8).
-   - **Private repository with GitHub App** (or with a deploy key): the better choice for anything
-     you do not want to publish. Pushes deploy automatically. Ask your sponsor if the panel has no
-     GitHub App yet.
+   - **Private repository with a deploy key**: for code you do not want to publish. Coolify shows
+     a public key to add under the repository's **Settings → Deploy keys**; automatic deploys need
+     the webhook of step 8 as well. (The panel has no GitHub App yet, so the GitHub App route is
+     not available; ask your sponsor if you need it.)
 4. Pick the server, branch `main`, and **Build pack: Docker Compose**. Leave the compose location
    at `/compose.yaml`.
 5. Continue to the resource. Under **Domains**, find the line for the service `app` and enter your
-   address **with the port**: `https://threebody-myteam.apps.twinhub.nl:8501`. Without it the
-   proxy may try port 80 and show a bad gateway. (Set through Coolify's API with the port left off,
-   the app still answered, because the compose file's `EXPOSE 8501` told Coolify the port; the
-   panel's field is the safe place to say it.)
+   address **with the port**: `https://threebody-myteam.apps.twinhub.nl:8501`. The port tells the
+   proxy where Streamlit listens. (Left off, this app still answers, because its container exposes
+   one port only; an app that exposes several needs it.)
 6. There are no environment variables to set. Check the resource's **Environment Variables** tab: it
    lists `SERVICE_PASSWORD_POSTGRES` and `SERVICE_PASSWORD_ADMIN`, already generated. The admin
    password is the code that lets you delete setups in the gallery; read it there when you need it.
 7. Press **Deploy**. Open the deployment log. You should see the image build, then `db` become
    healthy, then `migrate` run `alembic upgrade head` and exit with code 0, then `app` start. The
    first build takes a few minutes; later ones reuse the cache.
-8. **Automatic deploys.** With the GitHub App this is already on. With a public repository, copy the
-   webhook URL and secret from the resource's **Webhooks** section into your fork's
+8. **Automatic deploys.** Copy the webhook URL and secret from the resource's **Webhooks** section into your fork's
    **Settings → Webhooks** (content type `application/json`, push events), and make sure the
    resource's **Auto Deploy** switch is on.
 9. Visit your address. The first request can take a moment while the certificate is issued. The
@@ -87,7 +87,9 @@ needs the lab until its tooling exists.
   not the volume.
 - **A schema change** is a new file in `migrations/versions/`. `migrate` applies it before the new
   `app` starts, on every deploy.
-- **Roll back**: the resource's **Deployments** list shows earlier deployments; redeploy one.
+- **Roll back**: `git revert` the bad commit and push; Coolify builds the code as it was.
+- **Every push redeploys**, documentation included, and the app is down for a few seconds while
+  the new containers start.
 - **Logs and shell**: per service, in the resource. `migrate` is a one-shot job, so its log is the
   place to look when a deploy stops before the app starts.
 
