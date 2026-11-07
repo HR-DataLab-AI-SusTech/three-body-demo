@@ -58,6 +58,29 @@ fills it in. Nothing secret is in the repository, and you never type a password.
 9. Visit your address. The first request can take a moment while the certificate is issued. The
    gallery already holds the sixteen famous orbits.
 
+## The address: choosing it, changing it, your own domain
+
+An app's address is `https://<app>-<tenant>.apps.twinhub.nl`. The `<tenant>` part is your team's
+server and is fixed; the `<app>` part is yours to choose. The lab's front door sends every name that
+ends in `-<tenant>.apps.twinhub.nl` to your server, so no lab step is needed to *route* a new name
+(checked 2026-11-07: `anything-pilot.apps.twinhub.nl` reached the pilot tenant, a name ending in
+another tenant was refused).
+
+**Change the name**: edit the domain on the resource (**Domains**, the line for `app`, keep the
+port), save, and redeploy. The old name stops answering. Your server's proxy fetches a new
+certificate the first time the new name is visited.
+
+**The name must also resolve.** Until the lab creates the wildcard record `*.apps.twinhub.nl`,
+every name needs its own DNS record, made by the lab: ask your sponsor to add the new name before you
+switch. After the wildcard exists, renaming is entirely yours. (As of 2026-11-07 there is no
+wildcard; `threebody-pilot` and the panel have records of their own.)
+
+**Your own domain** (`myapp.example.org`): point a `CNAME` at the pool's hostname (an `A` record for a
+bare domain), ask your sponsor to add the name to your server's allowed names, then enter it as the
+resource's domain. Names under `twinhub.nl` cannot be claimed this way.
+
+Not tried yet: a rename end to end, certificate included. Treat that part as unverified.
+
 ## Day to day
 
 - **Change the app**: edit, push to `main`, Coolify rebuilds and redeploys.
@@ -103,7 +126,7 @@ pack, or let Coolify detect the language, and set the port in the resource.
 | Bad gateway | the domain has the port (`:8501`); `app` is running, not restarting |
 | Deploy stops at `migrate` | its log; a failing migration keeps `app` from starting, by design |
 | Build killed or very slow | your server ran out of memory during the build; ask your sponsor for more, or build the image in GitHub Actions and deploy it (below) |
-| No certificate | the address resolves to the pool (`dig +short <address>`); wait a minute and reload |
+| No certificate, or a name that does not open | the name resolves to the pool (`dig +short <address>`); a new name needs a DNS record first (see the address section); wait a minute and reload |
 | A push did not deploy | the webhook's recent deliveries in GitHub; the resource's Auto Deploy switch |
 
 ## Later: build in CI, deploy a pinned image
