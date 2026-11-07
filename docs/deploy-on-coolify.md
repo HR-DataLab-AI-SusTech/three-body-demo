@@ -41,8 +41,10 @@ fills it in. Nothing secret is in the repository, and you never type a password.
 4. Pick the server, branch `main`, and **Build pack: Docker Compose**. Leave the compose location
    at `/compose.yaml`.
 5. Continue to the resource. Under **Domains**, find the line for the service `app` and enter your
-   address **with the port**: `https://threebody-myteam.apps.twinhub.nl:8501`. Without `:8501`
-   the proxy tries port 80 and shows a bad gateway.
+   address **with the port**: `https://threebody-myteam.apps.twinhub.nl:8501`. Without it the
+   proxy may try port 80 and show a bad gateway. (Set through Coolify's API with the port left off,
+   the app still answered, because the compose file's `EXPOSE 8501` told Coolify the port; the
+   panel's field is the safe place to say it.)
 6. There are no environment variables to set. Check the resource's **Environment Variables** tab: it
    lists `SERVICE_PASSWORD_POSTGRES` and `SERVICE_PASSWORD_ADMIN`, already generated. The admin
    password is the code that lets you delete setups in the gallery; read it there when you need it.
