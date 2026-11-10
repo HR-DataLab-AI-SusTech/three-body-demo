@@ -3,8 +3,10 @@
 You will fork this repository, point your [Coolify](https://coolify.io) team at the fork, and get
 the app on a public HTTPS address that redeploys on every push to `main`. About fifteen minutes.
 
-> Written for the HR DataLab's panel (<https://panel.apps.twinhub.nl>). Button names follow
-> Coolify 4.x and can differ a little between versions.
+> Written for the HR DataLab's panel (<https://panel.twinhub.nl>). Button names follow
+> Coolify 4.x and can differ a little between versions. The panel first asks for your email
+> address and mails you a six-digit code; use your `@hr.nl` address, or ask your sponsor to add
+> the address you use.
 
 ## What you need
 
